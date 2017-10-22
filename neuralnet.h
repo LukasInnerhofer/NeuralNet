@@ -38,7 +38,7 @@ public:
 	static const enum activationFunction { Logistic, TanH, ActivationFunctionMax = TanH };
 
 	void forward(const std::vector<double> &inputs);
-	void backward();
+	void train(const std::vector<double> &inputs, const std::vector<double> &outputs);
 };
 
 #endif // NEURAL_NET_H

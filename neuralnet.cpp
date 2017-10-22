@@ -79,30 +79,27 @@ void NeuralNet::forward(const std::vector<double> &inputs)
 {
 	try
 	{
-		if (neurons.size() > 0)
+		if (inputs.size() > neurons[0].size())
 		{
-			if (inputs.size() > neurons[0].size())
-			{
-				std::cerr << "Error during feedforward: Number of input values exceeds number of input neurons.\n";
-				return;
-			}
+			throw std::invalid_argument("Number of input values exceeds number of input neurons.");
+		}
 
-			for (size_t itInputs = 0; itInputs < inputs.size(); ++itInputs)	// Load inputs into input neurons
+		for (size_t itInputs = 0; itInputs < inputs.size(); ++itInputs)	// Load inputs into input neurons
+		{
+			neurons[0][itInputs].in = neurons[0][itInputs].out = inputs[itInputs];
+		}
+		for (size_t itLayers = 1; itLayers < neurons.size(); ++itLayers)	// For each layer
+		{
+			for (size_t itNeurons = 0; itNeurons < neurons[itLayers].size(); ++itNeurons)	// For each neuron of this layer
 			{
-				neurons[0][itInputs].in = neurons[0][itInputs].out = inputs[itInputs];
-			}
-			for (size_t itLayers = 1; itLayers < neurons.size(); ++itLayers)	// For each layer
-			{
-				for (size_t itNeurons = 0; itNeurons < neurons[itLayers].size(); ++itNeurons)	// For each neuron of this layer
+				Neuron currentNeuron = neurons[itLayers][itNeurons];
+				for (size_t itPreviousNeurons = 0; itPreviousNeurons < neurons[itLayers - 1].size(); ++itPreviousNeurons)	// For each neuron of the previous layer
 				{
-					for (size_t itPreviousNeurons = 0; itPreviousNeurons < neurons[itLayers - 1].size(); ++itPreviousNeurons)	// For each neuron of the previous layer
-					{
-						// Sum up the values of all the neurons of the previous layer with the weights of the synapses that connect them with this neuron
-						neurons[itLayers][itNeurons].in += neurons[itLayers - 1][itPreviousNeurons].out * synapses[itLayers - 1][itPreviousNeurons][itNeurons];
-					}
-
-					neurons[itLayers][itNeurons].out = activationFunctions[neurons[itLayers][itNeurons].activationFunction](neurons[itLayers][itNeurons].in);	// Apply the activation function
+					// Sum up the values of all the neurons of the previous layer with the weights of the synapses that connect them with this neuron
+					currentNeuron.in += neurons[itLayers - 1][itPreviousNeurons].out * synapses[itLayers - 1][itPreviousNeurons][itNeurons];
 				}
+
+				currentNeuron.out = activationFunctions[currentNeuron.activationFunction](currentNeuron.in);	// Apply the activation function
 			}
 		}
 	}
@@ -113,5 +110,27 @@ void NeuralNet::forward(const std::vector<double> &inputs)
 	catch (const std::exception &exception)
 	{
 		std::cerr << "Unknown exception during feedforward: " << exception.what() << std::endl;
+	}
+}
+
+void NeuralNet::train(const std::vector<double> &inputs, const std::vector<double> &outputs)
+{
+	try
+	{
+		if (outputs.size() != neurons[neurons.size() - 1].size())
+		{
+			throw std::invalid_argument("Number of output values in the training set exceeds number of output neurons.");
+		}
+
+		forward(inputs);
+		std::vector<std::vector<double>> errors = std::vector<std::vector<double>>(neurons.size(), std::vector<double>());
+		
+		for (int itLayers = neurons.size() - 1; itLayers >= 0; --itLayers)
+		{
+			if (itLayers == neurons.size() - 1)	// Output layer
+			{
+
+			}
+		}
 	}
 }
