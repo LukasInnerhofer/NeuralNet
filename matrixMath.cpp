@@ -17,7 +17,7 @@ std::vector<T> operator-(const std::vector<T> &vector1, const std::vector<T> &ve
 	}
 
 	std::vector<T> difference;
-	for (unsigned int it = 0; it < vector1.size()); ++it)
+	for (unsigned int it = 0; it < vector1.size(); ++it)
 	{
 		difference.push_back(vector1[it] - vector2[it]);
 	}
