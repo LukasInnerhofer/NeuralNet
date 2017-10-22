@@ -12,6 +12,10 @@ namespace matrixMath
 {
 	template<typename T>
 	std::vector<T> hadamard(const std::vector<T> &vector1, const std::vector<T> &vector2);
+	template<typename T>
+	std::vector<std::vector<T>> transpose(const std::vector<std::vector<T>> &matrix);
 }
+
+#include "matrixMath.tpp"
 
 #endif // MATRIX_MATH_H
