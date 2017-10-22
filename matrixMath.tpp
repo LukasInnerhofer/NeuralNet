@@ -1,4 +1,6 @@
-#include "matrixMath.h"
+#include <vector>
+#include <iostream>
+#include <stdexcept>
 
 template<typename T>
 std::vector<T> operator-(const std::vector<T> &vector1, const std::vector<T> &vector2)
@@ -17,7 +19,7 @@ std::vector<T> operator-(const std::vector<T> &vector1, const std::vector<T> &ve
 	}
 
 	std::vector<T> difference;
-	for (unsigned int it = 0; it < vector1.size()); ++it)
+	for (unsigned int it = 0; it < vector1.size(); ++it)
 	{
 		difference.push_back(vector1[it] - vector2[it]);
 	}
@@ -49,5 +51,27 @@ namespace matrixMath
 		}
 
 		return hadamard;
+	}
+
+	template<typename T>
+	std::vector<std::vector<T>> transpose(const std::vector<std::vector<T>> &matrix)
+	{
+		auto transposedMatrix = std::vector<std::vector<T>>(matrix[0].size(), std::vector<T>());
+		for (unsigned int itRows = 0; itRows < matrix[0].size(); ++itRows)
+		{
+			for (unsigned int itColumns = 0; itColumns < matrix.size(); ++itColumns)
+			{
+				transposedMatrix[itRows].push_back(0);
+				if (itColumns == itRows)
+				{
+					transposedMatrix[itColumns][itRows] = matrix[itColumns][itRows];
+				}
+				else
+				{
+					transposedMatrix[itRows][itColumns] = matrix[itColumns][itRows];
+				}
+			}
+		}
+		return transposedMatrix;
 	}
 }
