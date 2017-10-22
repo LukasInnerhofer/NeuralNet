@@ -70,25 +70,15 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &_neurons, const std::vecto
 
 		for (size_t itLayers = 0; itLayers < _neurons.size(); ++itLayers) 	// For each layer of neurons
 		{
-			if (_activationFunctions[itLayers].size() != _neurons[itLayers])
-			{
-				throw badTopology;
-			}
-
 			std::vector<double> layerInputs;
 			std::vector<std::function<double(const double &)>> layerFunctions, layerFunctionDerivatives;
 			std::vector<std::vector<double>> layerSynapses;	// Store all Synapses connecting this layer to the next
 			for (unsigned int itNeurons = 0; itNeurons < _neurons[itLayers]; ++itNeurons)	// For each Neuron in this layer
 			{
-				if (_activationFunctions[itLayers][itNeurons] > ActivationFunctionMax)
-				{
-					throw std::invalid_argument("Activation function topology contains non-existent activation function.");
-				}
-
 				if (itLayers > 0)
 				{
-					layerFunctions.push_back(availableActivationFunctions[_activationFunctions[itLayers][itNeurons]]);
-					layerFunctionDerivatives.push_back(availableActivationFunctionDerivatives[_activationFunctions[itLayers][itNeurons]]);
+					layerFunctions.push_back(availableActivationFunctions[_activationFunctions[itLayers - 1][itNeurons]]);
+					layerFunctionDerivatives.push_back(availableActivationFunctionDerivatives[_activationFunctions[itLayers - 1][itNeurons]]);
 				}
 				else
 				{
@@ -178,13 +168,13 @@ void NeuralNet::train(const std::vector<double> &inputs, const std::vector<doubl
 		}
 
 		forward(inputs);
-		std::vector<std::vector<double>> errors = std::vector<std::vector<double>>(this->inputs.size(), std::vector<double>());
+		auto errors = std::vector<std::vector<double>>(this->inputs.size(), std::vector<double>());
 		
 		for (int itLayers = this->inputs.size() - 1; itLayers >= 0; --itLayers)
 		{
 			if (itLayers == this->inputs.size() - 1)	// Output layer
 			{
-				errors[itLayers] = matrixMath::hadamard(this->outputs[itLayers] - outputs, vectorFunction(activationFunctionDerivatives[itLayers], this->inputs[itLayers]));
+				errors[itLayers] = matrixMath::hadamard(this->outputs[itLayers] - outputs, vectorFunction(activationFunctionDerivatives[itLayers - 1], this->inputs[itLayers]));
 			}
 		}
 	}
