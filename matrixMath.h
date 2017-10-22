@@ -16,4 +16,6 @@ namespace matrixMath
 	std::vector<std::vector<T>> transpose(const std::vector<std::vector<T>> &matrix);
 }
 
+#include "matrixMath.tpp"
+
 #endif // MATRIX_MATH_H
