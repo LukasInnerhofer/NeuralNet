@@ -4,6 +4,10 @@ std::vector<std::function<double(const double &)>> NeuralNet::activationFunction
 	[](const double &x) -> double { return 1 / (1 + std::exp(-x)); },			// Logistic
 	[](const double &x) -> double { return 2 / (1 + std::exp(-2 * x)) - 1; }	// Hyperbolic Tangent (TanH)
 };
+std::vector<std::function<double(const double &)>> NeuralNet::activationFunctionDerivatives = std::vector<std::function<double(const double &)>>{
+	[](const double &x) -> double { return std::exp(-x) / std::pow(1 + std::exp(-x), 2); },				// Logistic
+	[](const double &x) -> double { return 4 * std::exp(-2 * x) / std::pow(1 + std::exp(-2 * x), 2); }	// Hyperbolic Tangent (TanH)
+};
 
 NeuralNet::NeuralNet()
 {

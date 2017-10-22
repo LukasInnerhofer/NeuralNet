@@ -30,6 +30,7 @@ private:
 	inline double randomReal() { return distribution(randomEngine); }
 	
 	static std::vector<std::function<double(const double &)>> activationFunctions;
+	static std::vector<std::function<double(const double &)>> activationFunctionDerivatives;
 
 public:
 	NeuralNet();
