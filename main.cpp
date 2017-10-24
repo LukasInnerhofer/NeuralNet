@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 	std::cout << net.getOutputs()[0] << std::endl;
 	net.forward({ 1,1 });
 	std::cout << net.getOutputs()[0] << std::endl;
-
+  
 	std::cin.get();
 	return 0;
 }
