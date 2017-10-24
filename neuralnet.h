@@ -29,10 +29,12 @@ private:
 	std::vector<double> vectorFunction(std::vector<std::function<double(const double &)>> functions, const std::vector<double> &args);
 
 public:
+	std::vector<double> getOutputs();
+
 	NeuralNet();
 	NeuralNet(const std::vector<unsigned int> &_neurons, const std::vector<std::vector<unsigned int>> &_activationFunctions);
 
-	static const enum activationFunction { Logistic, TanH, ActivationFunctionMax = TanH };
+	enum activationFunction { Logistic, TanH, ActivationFunctionMax = TanH };
 
 	void forward(const std::vector<double> &inputs);
 	void train(const std::vector<double> &inputs, const std::vector<double> &outputs);
