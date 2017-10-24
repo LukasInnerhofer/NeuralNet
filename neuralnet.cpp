@@ -1,13 +1,33 @@
 #include "neuralnet.h"
 
-std::vector<std::function<double(const double &)>> NeuralNet::activationFunctions = std::vector<std::function<double(const double &)>> {
+std::vector<std::function<double(const double &)>> NeuralNet::availableActivationFunctions = std::vector<std::function<double(const double &)>> {
 	[](const double &x) -> double { return 1 / (1 + std::exp(-x)); },			// Logistic
 	[](const double &x) -> double { return 2 / (1 + std::exp(-2 * x)) - 1; }	// Hyperbolic Tangent (TanH)
 };
+std::vector<std::function<double(const double &)>> NeuralNet::availableActivationFunctionPrimes = std::vector<std::function<double(const double &)>>{
+	[](const double &x) -> double { return std::exp(-x) / std::pow(1 + std::exp(-x), 2); },				// Logistic
+	[](const double &x) -> double { return 4 * std::exp(-2 * x) / std::pow(1 + std::exp(-2 * x), 2); }	// Hyperbolic Tangent (TanH)
+};
+
+std::vector<double> NeuralNet::vectorFunction(std::vector<std::function<double(const double &)>> functions, const std::vector<double> &args)
+{
+	std::vector<double> returnValues;
+	for (unsigned int it = 0; it < args.size(); ++it)
+	{
+		returnValues.push_back(functions[it](args[it]));
+	}
+	return returnValues;
+}
+
+std::vector<double> NeuralNet::getOutputs()
+{
+	return outputs[outputs.size() - 1];
+}
 
 NeuralNet::NeuralNet()
 {
-	neurons = std::vector<std::vector<Neuron>>();
+	inputs = outputs = std::vector<std::vector<double>>();
+	activationFunctions = activationFunctionPrimes = std::vector<std::vector<std::function<double(const double &)>>>();
 	synapses = std::vector<std::vector<std::vector<double>>>();
 	
 	distribution = std::uniform_real_distribution<double>(0.0, 1.0);	
@@ -15,41 +35,39 @@ NeuralNet::NeuralNet()
 	randomEngine.seed(randomDevice());
 }
 
-NeuralNet::NeuralNet(const std::vector<unsigned int> &_neurons, const std::vector<std::vector<unsigned int>> &_activationFunctions) : NeuralNet()
+NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector<std::vector<unsigned int>> &activationFunctions) : NeuralNet()
 {	
 	try
 	{
 		const std::invalid_argument badTopology("Neuron topology doesn't match activation function topology.");
-		if (_neurons.size() != _activationFunctions.size() + 1)
+		if (neurons.size() != activationFunctions.size() + 1)
 		{
 			throw badTopology;
 		}
 
-		for (size_t itLayers = 0; itLayers < _neurons.size(); ++itLayers) 	// For each layer of neurons
+		for (size_t itLayers = 0; itLayers < neurons.size(); ++itLayers) 	// For each layer of neurons
 		{
-			if (_activationFunctions[itLayers].size() != _neurons[itLayers])
-			{
-				throw badTopology;
-			}
-
-			std::vector<Neuron> layerNeurons;	// Store all neurons of this layer
+			std::vector<double> layerInputs;
+			std::vector<std::function<double(const double &)>> layerFunctions, layerFunctionPrimes;
 			std::vector<std::vector<double>> layerSynapses;	// Store all Synapses connecting this layer to the next
-			for (unsigned int itNeurons = 0; itNeurons < _neurons[itLayers]; ++itNeurons)	// For each Neuron in this layer
+			for (unsigned int itNeurons = 0; itNeurons < neurons[itLayers]; ++itNeurons)	// For each Neuron in this layer
 			{
-				if (_activationFunctions[itLayers][itNeurons] > ActivationFunctionMax)
-				{
-					throw std::invalid_argument("Activation function topology contains non-existent activation function.");
-				}
-
 				if (itLayers > 0)
-					layerNeurons.push_back(Neuron(0.0, 0.0, _activationFunctions[itLayers][itNeurons]));
+				{
+					layerFunctions.push_back(availableActivationFunctions[activationFunctions[itLayers - 1][itNeurons]]);
+					layerFunctionPrimes.push_back(availableActivationFunctionPrimes[activationFunctions[itLayers - 1][itNeurons]]);
+				}
 				else
-					layerNeurons.push_back(Neuron(0.0, 0.0, 0));
+				{
+					layerFunctions.push_back([](const double &x) -> double { return x; });
+					layerFunctionPrimes.push_back([](const double &x) -> double { return 1; });
+				}
+				layerInputs.push_back(0.0);
 
-				if (itLayers < _neurons.size() - 1)	// For each layer except the output layer
+				if (itLayers < neurons.size() - 1)	// For each layer except the output layer
 				{
 					std::vector<double> newSynapses;	// Store all synapses connecting this neuron to the next layer
-					for (unsigned int itSynapses = 0; itSynapses < _neurons[itLayers + 1]; ++itSynapses)	// For each synapse of this neuron
+					for (unsigned int itSynapses = 0; itSynapses < neurons[itLayers + 1]; ++itSynapses)	// For each synapse of this neuron
 					{
 						newSynapses.push_back(randomReal());
 					}
@@ -57,12 +75,15 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &_neurons, const std::vecto
 				}
 			}
 
-			if (itLayers < _neurons.size() - 1)
+			if (itLayers < neurons.size() - 1)
 			{
 				synapses.push_back(layerSynapses);
 			}
 
-			neurons.push_back(layerNeurons);
+			inputs.push_back(layerInputs);
+			outputs.push_back(layerInputs);
+			this->activationFunctions.push_back(layerFunctions);
+			activationFunctionPrimes.push_back(layerFunctionPrimes);
 		}
 	}
 	catch (const std::invalid_argument &exception)
@@ -79,28 +100,19 @@ void NeuralNet::forward(const std::vector<double> &inputs)
 {
 	try
 	{
-		if (inputs.size() > neurons[0].size())
+		if (inputs.size() > this->inputs[0].size())
 		{
 			throw std::invalid_argument("Number of input values exceeds number of input neurons.");
 		}
 
 		for (size_t itInputs = 0; itInputs < inputs.size(); ++itInputs)	// Load inputs into input neurons
 		{
-			neurons[0][itInputs].in = neurons[0][itInputs].out = inputs[itInputs];
+			this->inputs[0][itInputs] = outputs[0][itInputs] = inputs[itInputs];
 		}
-		for (size_t itLayers = 1; itLayers < neurons.size(); ++itLayers)	// For each layer
+		for (size_t itLayers = 1; itLayers < this->inputs.size(); ++itLayers)	// For each layer
 		{
-			for (size_t itNeurons = 0; itNeurons < neurons[itLayers].size(); ++itNeurons)	// For each neuron of this layer
-			{
-				Neuron currentNeuron = neurons[itLayers][itNeurons];
-				for (size_t itPreviousNeurons = 0; itPreviousNeurons < neurons[itLayers - 1].size(); ++itPreviousNeurons)	// For each neuron of the previous layer
-				{
-					// Sum up the values of all the neurons of the previous layer with the weights of the synapses that connect them with this neuron
-					currentNeuron.in += neurons[itLayers - 1][itPreviousNeurons].out * synapses[itLayers - 1][itPreviousNeurons][itNeurons];
-				}
-
-				currentNeuron.out = activationFunctions[currentNeuron.activationFunction](currentNeuron.in);	// Apply the activation function
-			}
+			this->inputs[itLayers] = synapses[itLayers - 1] * this->outputs[itLayers - 1];
+			this->outputs[itLayers] = vectorFunction(activationFunctions[itLayers], this->inputs[itLayers]);
 		}
 	}
 	catch (const std::invalid_argument &exception)
@@ -117,20 +129,40 @@ void NeuralNet::train(const std::vector<double> &inputs, const std::vector<doubl
 {
 	try
 	{
-		if (outputs.size() != neurons[neurons.size() - 1].size())
+		if (outputs.size() != this->outputs[this->outputs.size() - 1].size())
 		{
 			throw std::invalid_argument("Number of output values in the training set exceeds number of output neurons.");
 		}
 
 		forward(inputs);
-		std::vector<std::vector<double>> errors = std::vector<std::vector<double>>(neurons.size(), std::vector<double>());
+		auto errors = std::vector<std::vector<double>>(this->inputs.size() - 1, std::vector<double>());
 		
-		for (int itLayers = neurons.size() - 1; itLayers >= 0; --itLayers)
+		for (int itLayers = this->inputs.size() - 1; itLayers > 0; --itLayers)
 		{
-			if (itLayers == neurons.size() - 1)	// Output layer
+			if (itLayers == this->inputs.size() - 1)	// Output layer
 			{
-
+				errors[itLayers - 1] = matrixMath::hadamard(this->outputs[itLayers] - outputs, vectorFunction(activationFunctionPrimes[itLayers], this->inputs[itLayers]));
+			}
+			else
+			{
+				errors[itLayers - 1] = matrixMath::hadamard(matrixMath::transpose(synapses[itLayers]) * errors[itLayers], vectorFunction(activationFunctionPrimes[itLayers], this->inputs[itLayers]));
 			}
 		}
+
+		for (unsigned int itLayers = 0; itLayers < synapses.size(); ++itLayers)
+		{
+			for (unsigned int itNeurons = 0; itNeurons < synapses[itLayers].size(); ++itNeurons)
+			{
+				for (unsigned int itSynapses = 0; itSynapses < synapses[itLayers][itNeurons].size(); ++itSynapses)
+				{
+					synapses[itLayers][itNeurons][itSynapses] -= this->outputs[itLayers][itNeurons] * errors[itLayers][itSynapses];
+				}
+			}
+		}
+	}
+	catch (const std::invalid_argument &e)
+	{
+		std::cerr << "Invalid argument. " << e.what() << std::endl;
+		return;
 	}
 }
