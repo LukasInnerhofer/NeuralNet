@@ -14,6 +14,7 @@ class NeuralNet
 private:
 	std::vector<std::vector<double>> inputs;
 	std::vector<std::vector<double>> outputs;
+	std::vector<std::vector<double>> biases;
 	std::vector<std::vector<std::function<double(const double &)>>> activationFunctions;
 	std::vector<std::vector<std::function<double(const double &)>>> activationFunctionPrimes;
 	std::vector<std::vector<std::vector<double>>> synapses;
