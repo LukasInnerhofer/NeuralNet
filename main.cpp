@@ -58,6 +58,18 @@ int main(int argc, char *argv[])
 		std::cout << net.getOutputs()[i] << std::endl;
 	}
 
+<<<<<<< HEAD
+=======
+	net.forward({ 0,0 });
+	std::cout << net.getOutputs()[0] << std::endl;
+	net.forward({ 1,0 });
+	std::cout << net.getOutputs()[0] << std::endl;
+	net.forward({ 0,1 });
+	std::cout << net.getOutputs()[0] << std::endl;
+	net.forward({ 1,1 });
+	std::cout << net.getOutputs()[0] << std::endl;
+  
+>>>>>>> a1d7b75f08f7fd09542d3d7055807e4c1c0af1ef
 	std::cin.get();
 	return 0;
 }
