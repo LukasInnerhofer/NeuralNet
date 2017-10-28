@@ -2,11 +2,6 @@
 
 int main(int argc, char *argv[])
 {
-	NeuralNet net = NeuralNet({ 255, 32, 32, 9 }, 
-			{ std::vector<unsigned int>(32, NeuralNet::Logistic),
-			std::vector<unsigned int>(32, NeuralNet::Logistic),
-			std::vector<unsigned int>(9, NeuralNet::Logistic) });
-
 	std::ifstream input("trainingSet.txt");
 	
 	std::vector<unsigned int> numbers;
@@ -22,11 +17,7 @@ int main(int argc, char *argv[])
 		{
 			if(counter == 0)
 			{
-				numbers.push_back(std::stoi(line.substr(0, position)));
-				for(unsigned int itOutputs = 0; itOutputs < 9; ++itOutputs)
-				{
-					outputs[outputs.size() - 1].push_back(itOutputs == numbers[numbers.size() - 1] - 1);
-				}
+				outputs[outputs.size() - 1].push_back(std::stoi(line.substr(0, position)));
 			}
 			else
 			{
@@ -36,40 +27,55 @@ int main(int argc, char *argv[])
 			line.erase(0, position + 1);
 		}
 	}
+	input.close();
+
+	NeuralNet net = NeuralNet({ inputs.size(), 64, 64, 64, outputs.size() },
+	{ std::vector<unsigned int>(64, NeuralNet::Logistic),
+		std::vector<unsigned int>(64, NeuralNet::Logistic),
+		std::vector<unsigned int>(64, NeuralNet::Logistic),
+		std::vector<unsigned int>(outputs.size(), NeuralNet::Logistic) });
 	
-	for(unsigned int itEpoche = 0; itEpoche < 256; ++itEpoche)
+	for(unsigned int itEpoche = 0; itEpoche < 2; ++itEpoche)
 	{
-		double error = 0;
 		for(unsigned int itTraining = 0; itTraining < inputs.size(); ++itTraining)
 		{
 			net.train(inputs[itTraining], outputs[itTraining]);
-			
-			for(unsigned int itOutputs = 0; itOutputs < outputs.size(); ++itOutputs)
-			{
-				error += outputs[itTraining][itOutputs] - net.getOutputs()[itOutputs];
-			}
 		}
-		std::cout << "Epoche: " << itEpoche << ", Error: " << error / outputs.size() << std::endl;
+		std::cout << "Epoche: " << itEpoche << std::endl;
 	}
 	
-	net.forward(inputs[1]);
-	for(int i = 0; i < 9; ++i)
+	for (unsigned int itTraining = 0; itTraining < inputs.size(); ++itTraining)
 	{
-		std::cout << net.getOutputs()[i] << std::endl;
+		net.forward(inputs[itTraining]);
+		for (int i = 0; i < net.getOutputs().size(); ++i)
+		{
+			std::cout << net.getOutputs()[i] << std::endl;
+		}
 	}
 
-<<<<<<< HEAD
-=======
-	net.forward({ 0,0 });
-	std::cout << net.getOutputs()[0] << std::endl;
-	net.forward({ 1,0 });
-	std::cout << net.getOutputs()[0] << std::endl;
-	net.forward({ 0,1 });
-	std::cout << net.getOutputs()[0] << std::endl;
-	net.forward({ 1,1 });
-	std::cout << net.getOutputs()[0] << std::endl;
-  
->>>>>>> a1d7b75f08f7fd09542d3d7055807e4c1c0af1ef
+	inputs.clear();
+	input.open("testSet.txt");
+	for (std::string line; getline(input, line);)
+	{
+		inputs.push_back(std::vector<double>());
+		std::size_t position = 0;
+		while ((position = line.find(",")) != std::string::npos)
+		{
+			inputs[inputs.size() - 1].push_back(std::stoi(line.substr(0, position)) / 255.0);
+			line.erase(0, position + 1);
+		}
+	}
+	input.close();
+
+	for (std::vector<double> netInput : inputs)
+	{
+		net.forward(netInput);
+		for (int i = 0; i < net.getOutputs().size(); ++i)
+		{
+			std::cout << net.getOutputs()[i] << std::endl;
+		}
+	}
+
 	std::cin.get();
 	return 0;
 }

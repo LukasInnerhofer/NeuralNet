@@ -63,6 +63,7 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector
 				{
 					layerFunctions.push_back([](const double &x) -> double { return x; });
 					layerFunctionPrimes.push_back([](const double &x) -> double { return 1; });
+					layerBiases.push_back(0);
 				}
 				layerInputs.push_back(0.0);
 
@@ -160,6 +161,10 @@ void NeuralNet::train(const std::vector<double> &inputs, const std::vector<doubl
 				{
 					synapses[itLayers][itNeurons][itSynapses] -= this->outputs[itLayers][itNeurons] * errors[itLayers][itSynapses];
 				}
+			}
+			for (unsigned int itNeurons = 0; itNeurons < biases[itLayers + 1].size(); ++itNeurons)
+			{
+				biases[itLayers + 1][itNeurons] -= errors[itLayers][itNeurons];
 			}
 		}
 	}
