@@ -30,7 +30,7 @@ NeuralNet::NeuralNet()
 	activationFunctions = activationFunctionPrimes = std::vector<std::vector<std::function<double(const double &)>>>();
 	synapses = std::vector<std::vector<std::vector<double>>>();
 	
-	distribution = std::uniform_real_distribution<double>(0.0, 1.0);	
+	distribution = std::uniform_real_distribution<double>(-1.0, 1.0);	
 	std::random_device randomDevice;
 	randomEngine.seed(randomDevice());
 }
@@ -48,6 +48,7 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector
 		for (size_t itLayers = 0; itLayers < neurons.size(); ++itLayers) 	// For each layer of neurons
 		{
 			std::vector<double> layerInputs;
+			std::vector<double> layerBiases;
 			std::vector<std::function<double(const double &)>> layerFunctions, layerFunctionPrimes;
 			std::vector<std::vector<double>> layerSynapses;	// Store all Synapses connecting this layer to the next
 			for (unsigned int itNeurons = 0; itNeurons < neurons[itLayers]; ++itNeurons)	// For each Neuron in this layer
@@ -56,11 +57,13 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector
 				{
 					layerFunctions.push_back(availableActivationFunctions[activationFunctions[itLayers - 1][itNeurons]]);
 					layerFunctionPrimes.push_back(availableActivationFunctionPrimes[activationFunctions[itLayers - 1][itNeurons]]);
+					layerBiases.push_back(randomReal());
 				}
 				else
 				{
 					layerFunctions.push_back([](const double &x) -> double { return x; });
 					layerFunctionPrimes.push_back([](const double &x) -> double { return 1; });
+					layerBiases.push_back(0);
 				}
 				layerInputs.push_back(0.0);
 
@@ -82,6 +85,7 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector
 
 			inputs.push_back(layerInputs);
 			outputs.push_back(layerInputs);
+			biases.push_back(layerBiases);
 			this->activationFunctions.push_back(layerFunctions);
 			activationFunctionPrimes.push_back(layerFunctionPrimes);
 		}
@@ -112,7 +116,7 @@ void NeuralNet::forward(const std::vector<double> &inputs)
 		for (size_t itLayers = 1; itLayers < this->inputs.size(); ++itLayers)	// For each layer
 		{
 			this->inputs[itLayers] = synapses[itLayers - 1] * this->outputs[itLayers - 1];
-			this->outputs[itLayers] = vectorFunction(activationFunctions[itLayers], this->inputs[itLayers]);
+			this->outputs[itLayers] = vectorFunction(activationFunctions[itLayers], this->inputs[itLayers] + biases[itLayers]);
 		}
 	}
 	catch (const std::invalid_argument &exception)
@@ -157,6 +161,10 @@ void NeuralNet::train(const std::vector<double> &inputs, const std::vector<doubl
 				{
 					synapses[itLayers][itNeurons][itSynapses] -= this->outputs[itLayers][itNeurons] * errors[itLayers][itSynapses];
 				}
+			}
+			for (unsigned int itNeurons = 0; itNeurons < biases[itLayers + 1].size(); ++itNeurons)
+			{
+				biases[itLayers + 1][itNeurons] -= errors[itLayers][itNeurons];
 			}
 		}
 	}

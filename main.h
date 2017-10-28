@@ -3,6 +3,9 @@
 
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <string>
+#include <cstddef>
 #include "neuralnet.h"
 
 #endif // MAIN_H
