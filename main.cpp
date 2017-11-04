@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 		{
 			if(counter == 0)
 			{
-				outputs[outputs.size() - 1].push_back(std::stoi(line.substr(0, position)));
+				outputs[outputs.size() - 1].push_back(std::stoi(line.substr(0, position)) / 10.0);
 			}
 			else
 			{
@@ -29,13 +29,13 @@ int main(int argc, char *argv[])
 	}
 	input.close();
 
-	NeuralNet net = NeuralNet({ inputs.size(), 64, 64, 64, outputs.size() },
+	NeuralNet net = NeuralNet({ inputs[0].size(), 64, 64, 64, outputs[0].size() },
 	{ std::vector<unsigned int>(64, NeuralNet::Logistic),
 		std::vector<unsigned int>(64, NeuralNet::Logistic),
 		std::vector<unsigned int>(64, NeuralNet::Logistic),
 		std::vector<unsigned int>(outputs.size(), NeuralNet::Logistic) });
 	
-	for(unsigned int itEpoche = 0; itEpoche < 2; ++itEpoche)
+	for(unsigned int itEpoche = 0; itEpoche < 256; ++itEpoche)
 	{
 		for(unsigned int itTraining = 0; itTraining < inputs.size(); ++itTraining)
 		{
