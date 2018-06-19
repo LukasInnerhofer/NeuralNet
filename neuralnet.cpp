@@ -1,17 +1,38 @@
 #include "neuralnet.h"
 
-std::vector<std::function<double(const double &)>> NeuralNet::availableActivationFunctions = std::vector<std::function<double(const double &)>> {
-	[](const double &x) -> double { return 1 / (1 + std::exp(-x)); },			// Logistic
-	[](const double &x) -> double { return 2 / (1 + std::exp(-2 * x)) - 1; }	// Hyperbolic Tangent (TanH)
+Vector<NeuralNet::AFunction> NeuralNet::availableAFunctions = {
+	[](const double &x) { return x; },								// Identity
+	[](const double &x) { return 1 / (1 + std::exp(-x)); },			// Logistic
+	[](const double &x) { return 2 / (1 + std::exp(-2 * x)) - 1; }	// Hyperbolic Tangent (TanH)
 };
-std::vector<std::function<double(const double &)>> NeuralNet::availableActivationFunctionPrimes = std::vector<std::function<double(const double &)>>{
-	[](const double &x) -> double { return std::exp(-x) / std::pow(1 + std::exp(-x), 2); },				// Logistic
-	[](const double &x) -> double { return 4 * std::exp(-2 * x) / std::pow(1 + std::exp(-2 * x), 2); }	// Hyperbolic Tangent (TanH)
+Vector<NeuralNet::AFunction> NeuralNet::availableAFunctionPrimes = {
+	[](const double &x) { return 1.0; },														// Identity
+	[](const double &x) { return std::exp(-x) / std::pow(1 + std::exp(-x), 2); },				// Logistic
+	[](const double &x) { return 4 * std::exp(-2 * x) / std::pow(1 + std::exp(-2 * x), 2); }	// Hyperbolic Tangent (TanH)
 };
 
-std::vector<double> NeuralNet::vectorFunction(std::vector<std::function<double(const double &)>> functions, const std::vector<double> &args)
+int NeuralNet::randInt(const int &lowerBound, const int &upperBound)
 {
-	std::vector<double> returnValues;
+	std::default_random_engine randomEngine;
+	std::random_device randomDevice;
+	randomEngine = std::default_random_engine(randomDevice());
+	
+	auto intDistribution = std::uniform_int_distribution<int>(lowerBound, upperBound);
+	return intDistribution(randomEngine);
+}
+
+double NeuralNet::randDouble(const double &lowerBound, const double &upperBound)
+{
+	std::default_random_engine randomEngine;
+	std::random_device randomDevice;
+	randomEngine = std::default_random_engine(randomDevice());
+	auto doubleDistribution = std::uniform_real_distribution<double>(lowerBound, upperBound);
+	return doubleDistribution(randomEngine);
+}
+
+Vector<double> NeuralNet::vectorFunction(Vector<NeuralNet::AFunction> functions, const Vector<double> &args)
+{
+	Vector<double> returnValues = Vector<double>();
 	for (unsigned int it = 0; it < args.size(); ++it)
 	{
 		returnValues.push_back(functions[it](args[it]));
@@ -19,60 +40,56 @@ std::vector<double> NeuralNet::vectorFunction(std::vector<std::function<double(c
 	return returnValues;
 }
 
-std::vector<double> NeuralNet::getOutputs()
+Vector<double> NeuralNet::getOutputs()
 {
 	return outputs[outputs.size() - 1];
 }
 
 NeuralNet::NeuralNet()
 {
-	inputs = outputs = std::vector<std::vector<double>>();
-	activationFunctions = activationFunctionPrimes = std::vector<std::vector<std::function<double(const double &)>>>();
-	synapses = std::vector<std::vector<std::vector<double>>>();
-	
-	distribution = std::uniform_real_distribution<double>(-1.0, 1.0);	
-	std::random_device randomDevice;
-	randomEngine.seed(randomDevice());
+	inputs = outputs = Matrix<double>();
+	aFunctions = aFunctionPrimes = Matrix<NeuralNet::AFunction>();
+	synapses = Vector<Matrix<double>>();
 }
 
-NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector<std::vector<unsigned int>> &activationFunctions) : NeuralNet()
+NeuralNet::NeuralNet(const Vector<unsigned int> &neurons, const Vector<Vector<unsigned int>> &aFunctions) : NeuralNet()
 {	
 	try
 	{
 		const std::invalid_argument badTopology("Neuron topology doesn't match activation function topology.");
-		if (neurons.size() != activationFunctions.size() + 1)
+		if (neurons.size() != aFunctions.size() + 1)
 		{
 			throw badTopology;
 		}
 
-		for (size_t itLayers = 0; itLayers < neurons.size(); ++itLayers) 	// For each layer of neurons
+		for (decltype(neurons.size()) itLayers = 0; itLayers < neurons.size(); ++itLayers) 	// For each layer of neurons
 		{
-			std::vector<double> layerInputs;
-			std::vector<double> layerBiases;
-			std::vector<std::function<double(const double &)>> layerFunctions, layerFunctionPrimes;
-			std::vector<std::vector<double>> layerSynapses;	// Store all Synapses connecting this layer to the next
+			Vector<double> layerInputs;
+			Vector<double> layerBiases;
+			Vector<NeuralNet::AFunction> layerFunctions, layerFunctionPrimes;
+			Matrix<double> layerSynapses;	// Store all Synapses connecting this layer to the next
 			for (unsigned int itNeurons = 0; itNeurons < neurons[itLayers]; ++itNeurons)	// For each Neuron in this layer
 			{
 				if (itLayers > 0)
 				{
-					layerFunctions.push_back(availableActivationFunctions[activationFunctions[itLayers - 1][itNeurons]]);
-					layerFunctionPrimes.push_back(availableActivationFunctionPrimes[activationFunctions[itLayers - 1][itNeurons]]);
-					layerBiases.push_back(randomReal());
+					layerFunctions.push_back(availableAFunctions[aFunctions[itLayers - 1][itNeurons]]);
+					layerFunctionPrimes.push_back(availableAFunctionPrimes[aFunctions[itLayers - 1][itNeurons]]);
+					layerBiases.push_back(randDouble(-1, 1));
 				}
 				else
 				{
-					layerFunctions.push_back([](const double &x) -> double { return x; });
-					layerFunctionPrimes.push_back([](const double &x) -> double { return 1; });
+					layerFunctions.push_back(availableAFunctions[Identity]);
+					layerFunctionPrimes.push_back(availableAFunctionPrimes[Identity]);
 					layerBiases.push_back(0);
 				}
 				layerInputs.push_back(0.0);
 
 				if (itLayers < neurons.size() - 1)	// For each layer except the output layer
 				{
-					std::vector<double> newSynapses;	// Store all synapses connecting this neuron to the next layer
+					Vector<double> newSynapses;	// Store all synapses connecting this neuron to the next layer
 					for (unsigned int itSynapses = 0; itSynapses < neurons[itLayers + 1]; ++itSynapses)	// For each synapse of this neuron
 					{
-						newSynapses.push_back(randomReal());
+						newSynapses.push_back(randDouble(-1, 1));
 					}
 					layerSynapses.push_back(newSynapses);
 				}
@@ -86,8 +103,8 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector
 			inputs.push_back(layerInputs);
 			outputs.push_back(layerInputs);
 			biases.push_back(layerBiases);
-			this->activationFunctions.push_back(layerFunctions);
-			activationFunctionPrimes.push_back(layerFunctionPrimes);
+			this->aFunctions.push_back(layerFunctions);
+			aFunctionPrimes.push_back(layerFunctionPrimes);
 		}
 	}
 	catch (const std::invalid_argument &exception)
@@ -100,7 +117,7 @@ NeuralNet::NeuralNet(const std::vector<unsigned int> &neurons, const std::vector
 	}
 }
 
-void NeuralNet::forward(const std::vector<double> &inputs)
+void NeuralNet::forward(const Vector<double> &inputs)
 {
 	try
 	{
@@ -116,7 +133,7 @@ void NeuralNet::forward(const std::vector<double> &inputs)
 		for (size_t itLayers = 1; itLayers < this->inputs.size(); ++itLayers)	// For each layer
 		{
 			this->inputs[itLayers] = synapses[itLayers - 1] * this->outputs[itLayers - 1];
-			this->outputs[itLayers] = vectorFunction(activationFunctions[itLayers], this->inputs[itLayers] + biases[itLayers]);
+			this->outputs[itLayers] = vectorFunction(aFunctions[itLayers], this->inputs[itLayers] + biases[itLayers]);
 		}
 	}
 	catch (const std::invalid_argument &exception)
@@ -129,7 +146,7 @@ void NeuralNet::forward(const std::vector<double> &inputs)
 	}
 }
 
-void NeuralNet::train(const std::vector<double> &inputs, const std::vector<double> &outputs)
+void NeuralNet::train(const Vector<double> &inputs, const Vector<double> &outputs)
 {
 	try
 	{
@@ -139,17 +156,17 @@ void NeuralNet::train(const std::vector<double> &inputs, const std::vector<doubl
 		}
 
 		forward(inputs);
-		auto errors = std::vector<std::vector<double>>(this->inputs.size() - 1, std::vector<double>());
+		auto errors = Vector<Vector<double>>(this->inputs.size() - 1, Vector<double>());
 		
 		for (int itLayers = this->inputs.size() - 1; itLayers > 0; --itLayers)
 		{
 			if (itLayers == this->inputs.size() - 1)	// Output layer
 			{
-				errors[itLayers - 1] = matrixMath::hadamard(this->outputs[itLayers] - outputs, vectorFunction(activationFunctionPrimes[itLayers], this->inputs[itLayers]));
+				errors[itLayers - 1] = (this->outputs[itLayers] - outputs).hadamard(vectorFunction(aFunctionPrimes[itLayers], this->inputs[itLayers]));
 			}
 			else
 			{
-				errors[itLayers - 1] = matrixMath::hadamard(matrixMath::transpose(synapses[itLayers]) * errors[itLayers], vectorFunction(activationFunctionPrimes[itLayers], this->inputs[itLayers]));
+				errors[itLayers - 1] = (synapses[itLayers].transpose() * errors[itLayers]).hadamard(vectorFunction(aFunctionPrimes[itLayers], this->inputs[itLayers]));
 			}
 		}
 
@@ -173,4 +190,64 @@ void NeuralNet::train(const std::vector<double> &inputs, const std::vector<doubl
 		std::cerr << "Invalid argument. " << e.what() << std::endl;
 		return;
 	}
+}
+
+void NeuralNet::mutate()
+{
+	for (int it = 0; it < 64; ++it)
+	{
+		int layer = randInt(0, synapses.size() - 1);
+		int neuron = randInt(0, synapses[layer].size() - 1);
+		int synapse = randInt(0, synapses[layer][neuron].size() - 1);
+		synapses[layer][neuron][synapse] *= randDouble(0.5, 1.5);
+
+		layer = randInt(0, biases.size() - 1);
+		neuron = randInt(0, biases[layer].size() - 1);
+		biases[layer][neuron] *= randDouble(0.5, 1.5);
+	}
+}
+
+NeuralNet NeuralNet::breed(const NeuralNet &partner)
+{
+	/*auto childNeurons = Vector<unsigned int>(inputs.size(), 0);
+	auto childAFunctions = Vector<Vector<unsigned int>>(aFunctions.size() - 1, Vector<unsigned int>());
+	for (decltype(inputs.size()) itLayers = 0; itLayers < inputs.size(); ++itLayers)
+	{
+		childNeurons[itLayers] = inputs[itLayers].size();
+		if (itLayers > 0)
+		{
+			for (decltype(inputs[itLayers].size()) itNeurons = 0; itNeurons < inputs[itLayers].size(); ++itNeurons)
+			{
+				childAFunctions[itLayers - 1].push_back(0);
+			}
+		}
+	}*/
+
+	auto child = *this;
+	
+	for (decltype(child.inputs.size()) itLayers = 0; itLayers < child.inputs.size(); ++itLayers)
+	{
+		for (decltype(child.inputs[itLayers].size()) itNeurons = 0; itNeurons < child.inputs[itLayers].size(); ++itNeurons)
+		{
+			if (itLayers < child.inputs.size() - 1)
+			{
+				for (decltype(child.synapses[itLayers][itNeurons].size()) itOtherNeurons = 0; itOtherNeurons < child.synapses[itLayers][itNeurons].size(); ++itOtherNeurons)
+				{
+					if (randDouble(0, 1) < 0.5)
+						child.synapses[itLayers][itNeurons][itOtherNeurons] = partner.synapses[itLayers][itNeurons][itOtherNeurons];
+				}
+			}
+			
+			if (randDouble(0, 1) < 0.5)
+			{
+				child.biases[itLayers][itNeurons] = partner.biases[itLayers][itNeurons];
+				/*const auto aFunctionIndex = std::find(availableAFunctions.begin(),
+					availableAFunctions.end(),
+					partner.aFunctions[itLayers][itNeurons]);
+				child.aFunctions[itLayers][itNeurons] = availableAFunctions[aFunctionIndex];*/
+			}
+		}
+	}
+
+	return child;
 }
